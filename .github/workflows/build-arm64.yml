@@ -1,0 +1,17 @@
+sudo apt update
+sudo apt install -y git build-essential cmake ninja-build gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+git clone --recurse-submodules https://github.com/TrustTunnel/TrustTunnelClient.git
+cd TrustTunnelClient
+mkdir build && cd build
+
+cmake .. \
+    -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_SYSTEM_NAME=Linux \
+    -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+    -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+    -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+    -DCMAKE_EXE_LINKER_FLAGS="-static"
+
+ninja trusttunnel_client
