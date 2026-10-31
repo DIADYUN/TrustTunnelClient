@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -13,18 +13,39 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Build in ARM64 container
-        uses: uraimo/run-on-arch-action@v2
-        with:
-          arch: aarch64
-          distro: ubuntu22.04
-          githubToken: ${{ github.token }}
-          install: |
-            apt-get update -y
-            apt-get install -y build-essential cmake ninja-build git libssl-dev zlib1g-dev pkg-config cargo rustc
-          run: |
-            cmake -B build -S . -G Ninja -DCMAKE_BUILD_TYPE=Release
-            cmake --build build --target trusttunnel_client -j$(nproc)
+      - name: Install Toolchain and Build Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc-aarch64-linux-gnu g++-aarch64-linux-gnu python3 python3-pip python3-venv
+
+      - name: Setup Conan and Dependencies
+        run: |
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          if [ -f scripts/requirements.txt ]; then
+            pip install -r scripts/requirements.txt
+          fi
+          pip install conan
+          if [ -f scripts/bootstrap_conan_deps.py ]; then
+            python3 scripts/bootstrap_conan_deps.py || true
+          fi
+
+      - name: Configure CMake
+        run: |
+          source venv/bin/activate
+          cmake -B build -S . \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_SYSTEM_NAME=Linux \
+            -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+            -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
+
+      - name: Build CLI Client
+        run: |
+          source venv/bin/activate
+          cmake --build build --target trusttunnel_client -j$(nproc) || ninja -C build trusttunnel_client
 
       - name: Upload Binary Artifact
         uses: actions/upload-artifact@v4
