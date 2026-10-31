@@ -13,30 +13,18 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Install dependencies
-        run: |
-          sudo dpkg --add-architecture arm64
-          sudo apt-get update
-          sudo apt-get install -y \
-            cmake ninja-build \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
-            libssl-dev:arm64 zlib1g-dev:arm64 \
-            pkg-config
-
-      - name: Configure CMake
-        run: |
-          cmake -B build -S . \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_SYSTEM_NAME=Linux \
-            -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
-            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-            -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-            -DCMAKE_PREFIX_PATH=/usr/lib/aarch64-linux-gnu
-
-      - name: Build CLI Client
-        run: |
-          cmake --build build --target trusttunnel_client -j$(nproc)
+      - name: Build in ARM64 container
+        uses: uraimo/run-on-arch-action@v2
+        with:
+          arch: aarch64
+          distro: ubuntu22.04
+          githubToken: ${{ github.token }}
+          install: |
+            apt-get update -y
+            apt-get install -y build-essential cmake ninja-build git libssl-dev zlib1g-dev pkg-config cargo rustc
+          run: |
+            cmake -B build -S . -G Ninja -DCMAKE_BUILD_TYPE=Release
+            cmake --build build --target trusttunnel_client -j$(nproc)
 
       - name: Upload Binary Artifact
         uses: actions/upload-artifact@v4
